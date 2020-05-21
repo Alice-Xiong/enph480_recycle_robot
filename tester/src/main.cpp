@@ -32,7 +32,12 @@ void loop() {
     while(digitalRead(PROG_CONTROL)) {
         display.clearDisplay();
         display.setCursor(0,0);
-        display.println(analogRead(TAPE_DETECT_PIN));
+        if (analogRead(TAPE_DETECT_PIN) > analogRead(REF_PIN)) {
+            display.println("Tape detected");
+        } else {
+            display.println("No tape!");
+        }
+        
         display.display();
         delay(300);
     }
