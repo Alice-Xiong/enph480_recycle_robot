@@ -11,10 +11,10 @@
 #define THRES_R 750
 
 // DC motor definitions
-#define M1_B PA_7
-#define M1_F PA_6
-#define M2_F PB_0
-#define M2_B PB_1
+#define MR_B PA_6
+#define MR_F PA_7
+#define ML_F PB_1
+#define ML_B PB_0
 #define PWM_FREQ 2000
 
 // OLED definitions
@@ -34,10 +34,10 @@ void setup() {
     pinMode(TAPE_R, INPUT);
 
     // setup pwm out pins
-    pinMode(M1_F, OUTPUT);
-    pinMode(M1_B, OUTPUT);
-    pinMode(M2_F, OUTPUT);
-    pinMode(M2_B, OUTPUT);
+    pinMode(ML_F, OUTPUT);
+    pinMode(ML_B, OUTPUT);
+    pinMode(MR_F, OUTPUT);
+    pinMode(MR_B, OUTPUT);
 
     // start up the OLED screen
     display.begin(SSD1306_SWITCHCAPVCC, 0x3C);
@@ -45,14 +45,16 @@ void setup() {
     display.setCursor(0,0);
     display.setTextSize(1);
     display.setTextColor(SSD1306_WHITE);
+    display.display();
     delay(100);
 }
 
 void loop() {
-    while(1) {
-        //pwm_start(M1_F, PWM_FREQ, 3000, RESOLUTION_12B_COMPARE_FORMAT);
-        //pwm_start(M2_B, PWM_FREQ, 3000, RESOLUTION_12B_COMPARE_FORMAT);
 
+    while(1) {
+        pwm_start(ML_F, PWM_FREQ, 2000, RESOLUTION_12B_COMPARE_FORMAT);
+        pwm_start(MR_B, PWM_FREQ, 2000, RESOLUTION_12B_COMPARE_FORMAT);
+        /*
         display.clearDisplay();
         display.setCursor(0,0);
         display.println((analogRead(TAPE_L)-700)*10);
@@ -68,6 +70,7 @@ void loop() {
             display.println("RIGHT: OFF");
         }
         display.display();
+        */
         delay(300);
     }
 }
