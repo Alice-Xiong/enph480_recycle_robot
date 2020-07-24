@@ -4,11 +4,24 @@
 #define PROG_CONTROL PC_15
 #define GAME_MODE 1
 
+// Arm and servos
+#define GRAB_L PB_8
+#define GRAB_R PB_9
+#define ARM PB_6
+#define CAN_SENSE PA_1
+#define CAN_THRES 100
+#define CLOSE_L 2900
+#define CLOSE_R 550
+#define OPEN_L 1800
+#define OPEN_R 1150
+#define ARM_UP 2600
+#define ARM_DOWN 1250
+
 // Tape 
 #define TAPE_L PA_3
 #define TAPE_R PA_2
-#define THRES_L 650
-#define THRES_R 700
+#define THRES_L 150
+#define THRES_R 150
 
 // DC motor definitions
 #define MR_B PA_6
@@ -30,15 +43,23 @@
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
 
 void drive(int direction, int speedL, int speedR); 
+void commandGrabber(int valueL, int valueR);
+void score();
+
 
 void setup() {
     Wire.setSCL(OLED_SCL);
     Wire.setSDA(OLED_SDA);
+    // setup servos
+    pinMode(ARM, OUTPUT);
+    pinMode(GRAB_L, OUTPUT);
+    pinMode(GRAB_R, OUTPUT);
 
+    // setup tape sensors
     pinMode(TAPE_L, INPUT);
     pinMode(TAPE_R, INPUT);
 
-    // setup pwm out pins
+    // setup dc motor pwm out pins
     pinMode(ML_F, OUTPUT);
     pinMode(ML_B, OUTPUT);
     pinMode(MR_F, OUTPUT);
@@ -54,68 +75,105 @@ void setup() {
     delay(100);
 }
 
+
 void loop() {
     // Engage box
     //drive(BACK, 2000, 2000);
     //delay(2000);
 
-    bool onTapeL=false, onTapeR=false, lastL=false, lastR = false;
-    
-    while(1) {
-        // Tape following
-        if (analogRead(TAPE_L) > THRES_L) {
-            onTapeL = true;
-        } else {
-            onTapeL = false;
-        }
-        if (analogRead(TAPE_R) > THRES_R) {
-            onTapeR = true;
-        } else {
-            onTapeR = false;
-        }
-
-        if (onTapeL && onTapeR) {
-            drive(FORWARD, 2500, 2500);
-        } else if (!onTapeL && onTapeR)
-        {
-            drive(FORWARD, 2500, 1800);
-        } else if (onTapeL && !onTapeR)
-        {
-            drive(FORWARD, 1800, 2500);
-        } else {
-            if (lastL) {
-                drive(FORWARD, 1500, 3000);
-            } else if (lastR)
-            {
-                drive(FORWARD, 1500, 3000);
-            } else
-            {
-                drive(STOP, 0, 0);
-            }
-            
-        }
-
+    while (1)
+    {
         display.clearDisplay();
         display.setCursor(0,0);
-        display.println((analogRead(TAPE_L)-700)*10);
-        display.println((analogRead(TAPE_R)-700)*10);
-        if (onTapeL) {
-            display.println("LEFT ON");
+        display.println(analogRead(CAN_SENSE));
+
+        if (analogRead(CAN_SENSE) < CAN_THRES) {
+            display.println("CAN ");
+            score();
         } else {
-            display.println("LEFT OFF");
-        }
-        if (onTapeR) {
-            display.println("RIGHT ON");
-        } else {
-            display.println("RIGHT OFF");
+            display.println("NO CAN");
         }
         display.display();
-
-        lastL = onTapeL;
-        lastR = onTapeR;
-
-        delay(300);
     }
+    
+}
+
+void lineFollow(){
+    bool onTapeL=false, onTapeR=false, lastL=false, lastR = false;
+
+    // Tape following
+    if (analogRead(TAPE_L) > THRES_L) {
+        onTapeL = true;
+    } else {
+        onTapeL = false;
+    }
+    if (analogRead(TAPE_R) > THRES_R) {
+        onTapeR = true;
+    } else {
+        onTapeR = false;
+    }
+    /*
+    if (onTapeL && onTapeR) {
+        drive(FORWARD, 2500, 2500);
+    } else if (!onTapeL && onTapeR)
+    {
+        drive(FORWARD, 2500, 1800);
+    } else if (onTapeL && !onTapeR)
+    {
+        drive(FORWARD, 1800, 2500);
+    } else {
+        if (lastL) {
+            drive(FORWARD, 1500, 3000);
+        } else if (lastR)
+        {
+            drive(FORWARD, 1500, 3000);
+        } else
+        {
+            drive(STOP, 0, 0);
+        }
+        
+    }*/
+
+    display.clearDisplay();
+    display.setCursor(0,0);
+    display.println(analogRead(TAPE_L));
+    display.println(analogRead(TAPE_R));
+    if (onTapeL) {
+        display.println("LEFT ON");
+    } else {
+        display.println("LEFT OFF");
+    }
+    if (onTapeR) {
+        display.println("RIGHT ON");
+    } else {
+        display.println("RIGHT OFF");
+    }
+    display.display();
+
+    lastL = onTapeL;
+    lastR = onTapeR;
+
+    delay(300);
+}
+
+void score() {
+    //Close grabber
+    commandGrabber(CLOSE_L, CLOSE_R);
+    delay(300);  
+    
+    pwm_start(ARM, 100, ARM_UP, MICROSEC_COMPARE_FORMAT);
+    delay(450);
+    
+    commandGrabber(OPEN_L, OPEN_R);
+    delay(200);
+
+    pwm_start(ARM, 100, ARM_DOWN, MICROSEC_COMPARE_FORMAT);
+    delay(300);
+}
+
+void commandGrabber(int valueL, int valueR) {
+    pwm_start(GRAB_L, 100, valueL, MICROSEC_COMPARE_FORMAT);
+    pwm_start(GRAB_R, 100, valueR, MICROSEC_COMPARE_FORMAT);
 }
 
 void drive(int direction, int speedL, int speedR) {
