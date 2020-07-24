@@ -34,7 +34,7 @@
 #define BACK 2
 
 //Tape following
-#define FAST 3800
+#define FAST 3850
 #define REG 3600
 #define SLOW 3500
 #define VSLOW 3400
@@ -56,7 +56,7 @@ void drive(int direction, int speedL, int speedR);
 void commandGrabber(int valueL, int valueR);
 
 // Global variables
-bool onTapeL=false, onTapeR=false, lastL=true, lastR=true;
+bool onTapeL=true, onTapeR=true, lastL=true, lastR=true;
 
 
 void setup() {
@@ -113,11 +113,7 @@ void loop() {
             display.display();
         }
         
-       //lineFollow();
-       drive(FORWARD, REG, REG);
-       delay(5000);
-       drive(FORWARD, SLOW, SLOW);
-       delay(5000);
+       lineFollow();
     }
     
 }
@@ -141,25 +137,35 @@ void lineFollow(){
     onTapeL = analogRead(TAPE_L) > THRES_L;
     onTapeR = analogRead(TAPE_R) > THRES_R;
     
-    if (onTapeL && onTapeR) {
-        drive(FORWARD, REG, REG);
-    } else if (!onTapeL && onTapeR)
-    {
-        drive(FORWARD, REG, SLOW);
-    } else if (onTapeL && !onTapeR)
-    {
-        drive(FORWARD, SLOW, REG);
-    } else {
+    if (onTapeL || onTapeR) {
+        //Either sensor on tape
+        if (onTapeL && onTapeR) {
+            drive(FORWARD, REG, REG);
+        } else if (!onTapeL && onTapeR)
+        {
+            drive(FORWARD, REG, SLOW);
+        } else if (onTapeL && !onTapeR)
+        {
+            drive(FORWARD, SLOW, REG);
+        }
+        lastL = onTapeL;
+        lastR = onTapeR;
+    }
+    else {
+        // Both sensors off tape
+        // Not updating last values until one sensor is on tape again
+        // lastL is last time left sensor was on tape..
         if (lastL) {
-            drive(FORWARD, VSLOW, REG);
+            drive(FORWARD, 0, SLOW);
         } else if (lastR)
         {
-            drive(FORWARD, REG, VSLOW);
+            drive(FORWARD, SLOW, 0);
         } else
         {
-            drive(FORWARD, 0, 0);
-        }    
+            drive(FORWARD, SLOW, SLOW);
+        }  
     }
+    delay(20);
 
     // print stuff, only on debug 
     if (DEBUG) {
@@ -178,9 +184,6 @@ void lineFollow(){
             display.println("RIGHT OFF");
         }
         display.display();
-
-        lastL = onTapeL;
-        lastR = onTapeR;
 
         delay(200);
     }
