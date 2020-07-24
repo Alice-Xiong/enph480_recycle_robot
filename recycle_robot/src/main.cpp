@@ -34,10 +34,10 @@
 #define BACK 2
 
 //Tape following
-#define FAST 3850
-#define REG 3600
-#define SLOW 3500
-#define VSLOW 3400
+#define FAST 800
+#define REG 750
+#define SLOW 550
+#define VSLOW 200
 
 // OLED definitions
 #define SCREEN_WIDTH 128 // OLED display width, in pixels
@@ -113,7 +113,15 @@ void loop() {
             display.display();
         }
         
-       lineFollow();
+        lineFollow();
+        //drive(FORWARD, FAST, FAST);
+        //delay(5000);
+        //drive(FORWARD, REG, REG);
+        //delay(5000);
+        //drive(FORWARD, SLOW, SLOW);
+        //delay(5000);
+        //drive(FORWARD, SLOW, REG);
+        //delay(5000);
     }
     
 }
@@ -138,7 +146,7 @@ void lineFollow(){
     onTapeR = analogRead(TAPE_R) > THRES_R;
     
     if (onTapeL || onTapeR) {
-        //Either sensor on tape
+        //Eithe;r sensor on tape
         if (onTapeL && onTapeR) {
             drive(FORWARD, REG, REG);
         } else if (!onTapeL && onTapeR)
@@ -156,16 +164,16 @@ void lineFollow(){
         // Not updating last values until one sensor is on tape again
         // lastL is last time left sensor was on tape..
         if (lastL) {
-            drive(FORWARD, 0, SLOW);
+            drive(FORWARD, VSLOW, REG);
         } else if (lastR)
         {
-            drive(FORWARD, SLOW, 0);
+            drive(FORWARD, REG, VSLOW);
         } else
         {
-            drive(FORWARD, SLOW, SLOW);
+            drive(FORWARD, VSLOW, VSLOW);
         }  
     }
-    delay(20);
+    //delay(20);
 
     // print stuff, only on debug 
     if (DEBUG) {
@@ -221,24 +229,24 @@ void drive(int direction, int speedL, int speedR) {
     switch (direction)
     {
     case STOP:
-        pwm_start(ML_F, PWM_FREQ, 0, RESOLUTION_12B_COMPARE_FORMAT);
-        pwm_start(MR_F, PWM_FREQ, 0, RESOLUTION_12B_COMPARE_FORMAT);
-        pwm_start(ML_B, PWM_FREQ, 0, RESOLUTION_12B_COMPARE_FORMAT);
-        pwm_start(MR_B, PWM_FREQ, 0, RESOLUTION_12B_COMPARE_FORMAT);
+        pwm_start(ML_F, PWM_FREQ, 0, RESOLUTION_10B_COMPARE_FORMAT);
+        pwm_start(MR_F, PWM_FREQ, 0, RESOLUTION_10B_COMPARE_FORMAT);
+        pwm_start(ML_B, PWM_FREQ, 0, RESOLUTION_10B_COMPARE_FORMAT);
+        pwm_start(MR_B, PWM_FREQ, 0, RESOLUTION_10B_COMPARE_FORMAT);
         break;
     
     case FORWARD:
-        pwm_start(ML_F, PWM_FREQ, speedL, RESOLUTION_12B_COMPARE_FORMAT);
-        pwm_start(MR_F, PWM_FREQ, speedR, RESOLUTION_12B_COMPARE_FORMAT);
-        pwm_start(ML_B, PWM_FREQ, 0, RESOLUTION_12B_COMPARE_FORMAT);
-        pwm_start(MR_B, PWM_FREQ, 0, RESOLUTION_12B_COMPARE_FORMAT);
+        pwm_start(ML_F, PWM_FREQ, speedL, RESOLUTION_10B_COMPARE_FORMAT);
+        pwm_start(MR_F, PWM_FREQ, speedR, RESOLUTION_10B_COMPARE_FORMAT);
+        pwm_start(ML_B, PWM_FREQ, 0, RESOLUTION_10B_COMPARE_FORMAT);
+        pwm_start(MR_B, PWM_FREQ, 0, RESOLUTION_10B_COMPARE_FORMAT);
         break;
 
      case BACK:
-        pwm_start(ML_F, PWM_FREQ, 0, RESOLUTION_12B_COMPARE_FORMAT);
-        pwm_start(MR_F, PWM_FREQ, 0, RESOLUTION_12B_COMPARE_FORMAT);
-        pwm_start(ML_B, PWM_FREQ, speedL, RESOLUTION_12B_COMPARE_FORMAT);
-        pwm_start(MR_B, PWM_FREQ, speedR, RESOLUTION_12B_COMPARE_FORMAT);
+        pwm_start(ML_F, PWM_FREQ, 0, RESOLUTION_10B_COMPARE_FORMAT);
+        pwm_start(MR_F, PWM_FREQ, 0, RESOLUTION_10B_COMPARE_FORMAT);
+        pwm_start(ML_B, PWM_FREQ, speedL, RESOLUTION_10B_COMPARE_FORMAT);
+        pwm_start(MR_B, PWM_FREQ, speedR, RESOLUTION_10B_COMPARE_FORMAT);
         break;
     
     default:
