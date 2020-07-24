@@ -34,10 +34,10 @@
 #define BACK 2
 
 //Tape following
-#define FAST 4000
-#define REG 3800
+#define FAST 3800
+#define REG 3600
 #define SLOW 3500
-#define VSLOW 3200
+#define VSLOW 3400
 
 // OLED definitions
 #define SCREEN_WIDTH 128 // OLED display width, in pixels
@@ -90,7 +90,7 @@ void setup() {
 
 void loop() {
     //Engage box
-    engageBox(500);
+    //engageBox(500);
 
     while (1)
     {
@@ -113,8 +113,11 @@ void loop() {
             display.display();
         }
         
-       lineFollow();
-
+       //lineFollow();
+       drive(FORWARD, REG, REG);
+       delay(5000);
+       drive(FORWARD, SLOW, SLOW);
+       delay(5000);
     }
     
 }
@@ -148,16 +151,17 @@ void lineFollow(){
         drive(FORWARD, SLOW, REG);
     } else {
         if (lastL) {
-            drive(FORWARD, VSLOW, FAST);
+            drive(FORWARD, VSLOW, REG);
         } else if (lastR)
         {
-            drive(FORWARD, FAST, VSLOW);
+            drive(FORWARD, REG, VSLOW);
         } else
         {
             drive(FORWARD, 0, 0);
-        }
-        
+        }    
     }
+
+    // print stuff, only on debug 
     if (DEBUG) {
         display.clearDisplay();
         display.setCursor(0,0);
