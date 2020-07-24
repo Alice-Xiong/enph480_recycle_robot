@@ -1,7 +1,7 @@
 #include <Wire.h>
 #include <Adafruit_SSD1306.h>
 
-#define PROG_CONTROL PC_15
+#define DEBUG 0
 #define GAME_MODE 1
 
 // Arm and servos
@@ -28,10 +28,16 @@
 #define MR_F PA_7
 #define ML_F PB_1
 #define ML_B PB_0
-#define PWM_FREQ 2000
+#define PWM_FREQ FAST
 #define STOP 0
 #define FORWARD 1
 #define BACK 2
+
+//Tape following
+#define FAST 4000
+#define REG 3800
+#define SLOW 3500
+#define VSLOW 3200
 
 // OLED definitions
 #define SCREEN_WIDTH 128 // OLED display width, in pixels
@@ -42,9 +48,15 @@
 
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
 
+// Function prototypes
+void score();
+void engageBox(int time);
+void lineFollow();
 void drive(int direction, int speedL, int speedR); 
 void commandGrabber(int valueL, int valueR);
-void score();
+
+// Global variables
+bool onTapeL=false, onTapeR=false, lastL=true, lastR=true;
 
 
 void setup() {
@@ -77,83 +89,98 @@ void setup() {
 
 
 void loop() {
-    // Engage box
-    //drive(BACK, 2000, 2000);
-    //delay(2000);
+    //Engage box
+    engageBox(500);
 
     while (1)
     {
-        display.clearDisplay();
-        display.setCursor(0,0);
-        display.println(analogRead(CAN_SENSE));
-
+        /*
         if (analogRead(CAN_SENSE) < CAN_THRES) {
-            display.println("CAN ");
             score();
-        } else {
-            display.println("NO CAN");
         }
-        display.display();
+        */
+        if (DEBUG) {
+            display.clearDisplay();
+            display.setCursor(0,0);
+            display.println(analogRead(CAN_SENSE));
+
+            if (analogRead(CAN_SENSE) < CAN_THRES) {
+                display.println("CAN ");
+                
+            } else {
+                display.println("NO CAN");
+            }
+            display.display();
+        }
+        
+       lineFollow();
+
     }
     
 }
 
-void lineFollow(){
-    bool onTapeL=false, onTapeR=false, lastL=false, lastR = false;
+/*
+*
+* Important motions
+*
+*/
+void engageBox(int time) {
+    double start_time = getCurrentMillis();
+    while (getCurrentMillis() - start_time < time) {
+        drive(BACK, FAST, FAST);
+        lastL = analogRead(TAPE_L) > THRES_L;
+        lastR = analogRead(TAPE_R) > THRES_R;
+    }
+}
 
+void lineFollow(){
     // Tape following
-    if (analogRead(TAPE_L) > THRES_L) {
-        onTapeL = true;
-    } else {
-        onTapeL = false;
-    }
-    if (analogRead(TAPE_R) > THRES_R) {
-        onTapeR = true;
-    } else {
-        onTapeR = false;
-    }
-    /*
+    onTapeL = analogRead(TAPE_L) > THRES_L;
+    onTapeR = analogRead(TAPE_R) > THRES_R;
+    
     if (onTapeL && onTapeR) {
-        drive(FORWARD, 2500, 2500);
+        drive(FORWARD, REG, REG);
     } else if (!onTapeL && onTapeR)
     {
-        drive(FORWARD, 2500, 1800);
+        drive(FORWARD, REG, SLOW);
     } else if (onTapeL && !onTapeR)
     {
-        drive(FORWARD, 1800, 2500);
+        drive(FORWARD, SLOW, REG);
     } else {
         if (lastL) {
-            drive(FORWARD, 1500, 3000);
+            drive(FORWARD, VSLOW, FAST);
         } else if (lastR)
         {
-            drive(FORWARD, 1500, 3000);
+            drive(FORWARD, FAST, VSLOW);
         } else
         {
-            drive(STOP, 0, 0);
+            drive(FORWARD, 0, 0);
         }
         
-    }*/
-
-    display.clearDisplay();
-    display.setCursor(0,0);
-    display.println(analogRead(TAPE_L));
-    display.println(analogRead(TAPE_R));
-    if (onTapeL) {
-        display.println("LEFT ON");
-    } else {
-        display.println("LEFT OFF");
     }
-    if (onTapeR) {
-        display.println("RIGHT ON");
-    } else {
-        display.println("RIGHT OFF");
+    if (DEBUG) {
+        display.clearDisplay();
+        display.setCursor(0,0);
+        display.println(analogRead(TAPE_L));
+        display.println(analogRead(TAPE_R));
+        if (onTapeL) {
+            display.println("LEFT ON");
+        } else {
+            display.println("LEFT OFF");
+        }
+        if (onTapeR) {
+            display.println("RIGHT ON");
+        } else {
+            display.println("RIGHT OFF");
+        }
+        display.display();
+
+        lastL = onTapeL;
+        lastR = onTapeR;
+
+        delay(200);
     }
-    display.display();
 
-    lastL = onTapeL;
-    lastR = onTapeR;
-
-    delay(300);
 }
 
 void score() {
@@ -170,6 +197,13 @@ void score() {
     pwm_start(ARM, 100, ARM_DOWN, MICROSEC_COMPARE_FORMAT);
     delay(300);
 }
+
+
+/*
+*
+* Lowest level, send signal to motors
+*
+*/
 
 void commandGrabber(int valueL, int valueR) {
     pwm_start(GRAB_L, 100, valueL, MICROSEC_COMPARE_FORMAT);
