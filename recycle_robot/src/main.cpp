@@ -34,10 +34,10 @@
 #define BACK 2
 
 //Tape following
-#define FAST 800
+#define FAST 875
 #define REG 750
 #define SLOW 550
-#define VSLOW 200
+#define VSLOW 100
 
 // OLED definitions
 #define SCREEN_WIDTH 128 // OLED display width, in pixels
@@ -52,16 +52,20 @@ Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
 void score();
 void engageBox(int time);
 void lineFollow();
+void delayLineFollow(int duration);
+void displayLineSensors();
 void drive(int direction, int speedL, int speedR); 
 void commandGrabber(int valueL, int valueR);
 
-// Global variables
+// Global variables for tape following
 bool onTapeL=true, onTapeR=true, lastL=true, lastR=true;
 
 
 void setup() {
+    // OLED different SDA and SCL pins
     Wire.setSCL(OLED_SCL);
     Wire.setSDA(OLED_SDA);
+
     // setup servos
     pinMode(ARM, OUTPUT);
     pinMode(GRAB_L, OUTPUT);
@@ -84,46 +88,22 @@ void setup() {
     display.setTextSize(2);
     display.setTextColor(SSD1306_WHITE);
     display.display();
-    delay(100);
+    displayLineSensors();
+    delay(5000);
 }
 
 
 void loop() {
     //Engage box
-    //engageBox(500);
+    engageBox(700);
 
     while (1)
     {
-        /*
         if (analogRead(CAN_SENSE) < CAN_THRES) {
             score();
-        }
-        */
-        if (DEBUG) {
-            display.clearDisplay();
-            display.setCursor(0,0);
-            display.println(analogRead(CAN_SENSE));
-
-            if (analogRead(CAN_SENSE) < CAN_THRES) {
-                display.println("CAN ");
-                
-            } else {
-                display.println("NO CAN");
-            }
-            display.display();
-        }
-        
+        }        
         lineFollow();
-        //drive(FORWARD, FAST, FAST);
-        //delay(5000);
-        //drive(FORWARD, REG, REG);
-        //delay(5000);
-        //drive(FORWARD, SLOW, SLOW);
-        //delay(5000);
-        //drive(FORWARD, SLOW, REG);
-        //delay(5000);
     }
-    
 }
 
 /*
@@ -173,44 +153,38 @@ void lineFollow(){
             drive(FORWARD, VSLOW, VSLOW);
         }  
     }
-    //delay(20);
 
     // print stuff, only on debug 
     if (DEBUG) {
-        display.clearDisplay();
-        display.setCursor(0,0);
-        display.println(analogRead(TAPE_L));
-        display.println(analogRead(TAPE_R));
-        if (onTapeL) {
-            display.println("LEFT ON");
-        } else {
-            display.println("LEFT OFF");
-        }
-        if (onTapeR) {
-            display.println("RIGHT ON");
-        } else {
-            display.println("RIGHT OFF");
-        }
-        display.display();
-
-        delay(200);
+        displayLineSensors();
     }
+}
 
+// Functions like delay, but runs line following in the background
+void delayLineFollow(int duration) {
+    double startTime = getCurrentMillis();
+
+    while (getCurrentMillis() - startTime < duration) {
+        lineFollow();
+    }
 }
 
 void score() {
-    //Close grabber
+    // Close grabber
     commandGrabber(CLOSE_L, CLOSE_R);
-    delay(300);  
+    delayLineFollow(300);  
     
+    // Raise arm
     pwm_start(ARM, 100, ARM_UP, MICROSEC_COMPARE_FORMAT);
-    delay(450);
+    delayLineFollow(450);
     
+    // Open grabber
     commandGrabber(OPEN_L, OPEN_R);
-    delay(200);
+    delayLineFollow(200);
 
+    // Lower arm
     pwm_start(ARM, 100, ARM_DOWN, MICROSEC_COMPARE_FORMAT);
-    delay(300);
+    delayLineFollow(300);
 }
 
 
@@ -252,5 +226,46 @@ void drive(int direction, int speedL, int speedR) {
     default:
         break;
     }
+}
+
+void displayLineSensors() {
+    display.clearDisplay();
+    display.setCursor(0,0);
+    if (onTapeL) {
+        display.println("LEFT ON");
+    } else {
+        display.println("LEFT OFF");
+    }
+    if (onTapeR) {
+        display.println("RIGHT ON");
+    } else {
+        display.println("RIGHT OFF");
+    }
+    display.println(analogRead(CAN_SENSE));
+
+    if (analogRead(CAN_SENSE) < CAN_THRES) {
+        display.println("CAN ");
+        
+    } else {
+        display.println("NO CAN");
+    }
+    display.display();
+
+    delay(200);
+}
+
+
+void displayCAN(){
+    display.clearDisplay();
+    display.setCursor(0,0);
+    display.println(analogRead(CAN_SENSE));
+
+    if (analogRead(CAN_SENSE) < CAN_THRES) {
+        display.println("CAN ");
+        
+    } else {
+        display.println("NO CAN");
+    }
+    display.display();
 }
 
