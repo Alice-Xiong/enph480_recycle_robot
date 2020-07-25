@@ -96,6 +96,8 @@ void setup() {
 void loop() {
     //Engage box
     engageBox(700);
+    drive(STOP,0,0);
+    delay(200);
 
     while (1)
     {
