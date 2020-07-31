@@ -2,7 +2,6 @@
 #include <Adafruit_SSD1306.h>
 
 #define DEBUG 0
-#define GAME_MODE 1
 
 // Arm and servos
 #define GRAB_L PB_8
@@ -28,16 +27,12 @@
 #define MR_F PA_7
 #define ML_F PB_1
 #define ML_B PB_0
-#define PWM_FREQ FAST
-#define STOP 0
-#define FORWARD 1
-#define BACK 2
+#define DRIVE_PWM_FREQ 2000
 
 //Tape following
 #define FAST 875
 #define REG 750
 #define SLOW 550
-#define VSLOW 100
 
 // OLED definitions
 #define SCREEN_WIDTH 128 // OLED display width, in pixels
@@ -54,7 +49,7 @@ void engageBox(int time);
 void lineFollow();
 void delayLineFollow(int duration);
 void displayLineSensors();
-void drive(int direction, int speedL, int speedR); 
+void drive(int speedL, int speedR); 
 void commandGrabber(int valueL, int valueR);
 
 // Global variables for tape following
@@ -89,14 +84,15 @@ void setup() {
     display.setTextColor(SSD1306_WHITE);
     display.display();
     displayLineSensors();
-    delay(5000);
+    delay(1500);
 }
 
 
 void loop() {
+
     //Engage box
     engageBox(700);
-    drive(STOP,0,0);
+    drive(0,0);
     delay(200);
 
     while (1)
@@ -116,7 +112,7 @@ void loop() {
 void engageBox(int time) {
     double start_time = getCurrentMillis();
     while (getCurrentMillis() - start_time < time) {
-        drive(BACK, FAST, FAST);
+        drive(FAST, FAST);
         lastL = analogRead(TAPE_L) > THRES_L;
         lastR = analogRead(TAPE_R) > THRES_R;
     }
@@ -130,13 +126,13 @@ void lineFollow(){
     if (onTapeL || onTapeR) {
         //Eithe;r sensor on tape
         if (onTapeL && onTapeR) {
-            drive(FORWARD, REG, REG);
+            drive(REG, REG);
         } else if (!onTapeL && onTapeR)
         {
-            drive(FORWARD, REG, SLOW);
+            drive(REG, SLOW);
         } else if (onTapeL && !onTapeR)
         {
-            drive(FORWARD, SLOW, REG);
+            drive(SLOW, REG);
         }
         lastL = onTapeL;
         lastR = onTapeR;
@@ -146,13 +142,13 @@ void lineFollow(){
         // Not updating last values until one sensor is on tape again
         // lastL is last time left sensor was on tape..
         if (lastL) {
-            drive(FORWARD, VSLOW, REG);
+            drive(-SLOW, REG);
         } else if (lastR)
         {
-            drive(FORWARD, REG, VSLOW);
+            drive(REG, -SLOW);
         } else
         {
-            drive(FORWARD, VSLOW, VSLOW);
+            drive(SLOW, SLOW);
         }  
     }
 
@@ -201,32 +197,21 @@ void commandGrabber(int valueL, int valueR) {
     pwm_start(GRAB_R, 100, valueR, MICROSEC_COMPARE_FORMAT);
 }
 
-void drive(int direction, int speedL, int speedR) {
-    switch (direction)
-    {
-    case STOP:
-        pwm_start(ML_F, PWM_FREQ, 0, RESOLUTION_10B_COMPARE_FORMAT);
-        pwm_start(MR_F, PWM_FREQ, 0, RESOLUTION_10B_COMPARE_FORMAT);
-        pwm_start(ML_B, PWM_FREQ, 0, RESOLUTION_10B_COMPARE_FORMAT);
-        pwm_start(MR_B, PWM_FREQ, 0, RESOLUTION_10B_COMPARE_FORMAT);
-        break;
+void drive(int speedL, int speedR) {
+    if (speedL >= 0) {
+        pwm_start(ML_F, DRIVE_PWM_FREQ, speedL, RESOLUTION_10B_COMPARE_FORMAT);
+        pwm_start(ML_B, DRIVE_PWM_FREQ, 0, RESOLUTION_10B_COMPARE_FORMAT);
+    } else {
+        pwm_start(ML_F, DRIVE_PWM_FREQ, 0, RESOLUTION_10B_COMPARE_FORMAT);
+        pwm_start(ML_B, DRIVE_PWM_FREQ, -speedL, RESOLUTION_10B_COMPARE_FORMAT);
+    }
     
-    case FORWARD:
-        pwm_start(ML_F, PWM_FREQ, speedL, RESOLUTION_10B_COMPARE_FORMAT);
-        pwm_start(MR_F, PWM_FREQ, speedR, RESOLUTION_10B_COMPARE_FORMAT);
-        pwm_start(ML_B, PWM_FREQ, 0, RESOLUTION_10B_COMPARE_FORMAT);
-        pwm_start(MR_B, PWM_FREQ, 0, RESOLUTION_10B_COMPARE_FORMAT);
-        break;
-
-     case BACK:
-        pwm_start(ML_F, PWM_FREQ, 0, RESOLUTION_10B_COMPARE_FORMAT);
-        pwm_start(MR_F, PWM_FREQ, 0, RESOLUTION_10B_COMPARE_FORMAT);
-        pwm_start(ML_B, PWM_FREQ, speedL, RESOLUTION_10B_COMPARE_FORMAT);
-        pwm_start(MR_B, PWM_FREQ, speedR, RESOLUTION_10B_COMPARE_FORMAT);
-        break;
-    
-    default:
-        break;
+    if (speedR >= 0) {
+        pwm_start(MR_F, DRIVE_PWM_FREQ, speedR, RESOLUTION_10B_COMPARE_FORMAT);
+        pwm_start(MR_B, DRIVE_PWM_FREQ, 0, RESOLUTION_10B_COMPARE_FORMAT);    
+    } else {
+        pwm_start(MR_F, DRIVE_PWM_FREQ, 0, RESOLUTION_10B_COMPARE_FORMAT);
+        pwm_start(MR_B, DRIVE_PWM_FREQ, -speedR, RESOLUTION_10B_COMPARE_FORMAT);
     }
 }
 
