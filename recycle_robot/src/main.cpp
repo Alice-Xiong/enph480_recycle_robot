@@ -4,17 +4,18 @@
 #define DEBUG 0
 
 // Arm and servos
-#define GRAB_L PB_8
-#define GRAB_R PB_9
+#define ARM_PWM_FREQ 50
+#define GRAB_L PB_9
+#define GRAB_R PB_8
 #define ARM PB_6
 #define CAN_SENSE PA_1
 #define CAN_THRES 100
-#define CLOSE_L 2900
-#define CLOSE_R 550
-#define OPEN_L 1800
-#define OPEN_R 1150
+#define CLOSE_L 2700
+#define CLOSE_R 300
+#define OPEN_L 2100
+#define OPEN_R 900
 #define ARM_UP 2600
-#define ARM_DOWN 1250
+#define ARM_DOWN 1300
 
 // Tape 
 #define TAPE_L PA_3
@@ -46,7 +47,7 @@ Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
 // Function prototypes
 void score();
 void engageBox(int time);
-void lineFollow();
+void lineFollow(float mod = 1);
 void delayLineFollow(int duration);
 void displayLineSensors();
 void drive(int speedL, int speedR); 
@@ -89,7 +90,6 @@ void setup() {
 
 
 void loop() {
-
     //Engage box
     engageBox(700);
     drive(0,0);
@@ -118,21 +118,21 @@ void engageBox(int time) {
     }
 }
 
-void lineFollow(){
+void lineFollow(float mod){
     // Tape following
     onTapeL = analogRead(TAPE_L) > THRES_L;
     onTapeR = analogRead(TAPE_R) > THRES_R;
-    
+
     if (onTapeL || onTapeR) {
-        //Eithe;r sensor on tape
+        // Either sensor on tape
         if (onTapeL && onTapeR) {
-            drive(REG, REG);
+            drive(REG * mod, REG * mod); 
         } else if (!onTapeL && onTapeR)
         {
-            drive(REG, SLOW);
+            drive(REG * mod, SLOW * mod);
         } else if (onTapeL && !onTapeR)
         {
-            drive(SLOW, REG);
+            drive(SLOW * mod, REG * mod);
         }
         lastL = onTapeL;
         lastR = onTapeR;
@@ -142,13 +142,13 @@ void lineFollow(){
         // Not updating last values until one sensor is on tape again
         // lastL is last time left sensor was on tape..
         if (lastL) {
-            drive(-SLOW, REG);
+            drive(-SLOW * mod, REG * mod);
         } else if (lastR)
         {
-            drive(REG, -SLOW);
+            drive(REG * mod, -SLOW * mod);
         } else
         {
-            drive(SLOW, SLOW);
+            drive(SLOW * mod, SLOW * mod);
         }  
     }
 
