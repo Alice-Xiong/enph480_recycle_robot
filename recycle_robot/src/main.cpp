@@ -37,6 +37,7 @@
 #define FAST 900
 #define REG 850
 #define SLOW 750
+#define CAN_SPEED_REDUCTION 0.75
 
 // OLED definitions
 #define SCREEN_WIDTH 128 // OLED display width, in pixels
@@ -44,6 +45,10 @@
 #define OLED_RESET 	-1 // This display does not have a reset pin accessible
 #define OLED_SDA PB_11
 #define OLED_SCL PB_10
+
+// Timing in millisecond
+#define INITIAL_DISPLAY 3000
+#define ENGAGE_BOX_TIME 1000
 
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
 
@@ -53,7 +58,7 @@ void score();
 void engageBox(int time);
 void lineFollow(float mod = 1);
 void delayLineFollow(int duration);
-void displayLineSensors();
+void displayLineSensors(int time);
 void drive(int speedL, int speedR); 
 void commandGrabber(int valueL, int valueR);
 
@@ -84,36 +89,28 @@ void setup() {
     pinMode(MR_F, OUTPUT);
     pinMode(MR_B, OUTPUT);
 
-    // start up the OLED screen
+    // start up the OLED screen and print information
     display.begin(SSD1306_SWITCHCAPVCC, 0x3C);
     display.clearDisplay();
     display.setCursor(0,0);
     display.setTextSize(2);
     display.setTextColor(SSD1306_WHITE);
     display.display();
-    displayLineSensors();
-    delay(2500);
+    displayLineSensors(INITIAL_DISPLAY);
+
+    commandGrabber(OPEN_L, OPEN_R);
+    delay(200);
+    engageBox(ENGAGE_BOX_TIME);
 }
 
 
 void loop() {
-    if (MODE_SWITCH) {
-        //Engage box
-        commandGrabber(OPEN_L, OPEN_R);
-        delay(200);
-        engageBox(1000);
-      
 
-        while (1)
-        {
-            if (analogRead(CAN_SENSE) < CAN_THRES) {
-                score();
-            }        
-            lineFollow();
-        }
-    } else {
-        entertainment();
-    }
+    lineFollow();
+    if (analogRead(CAN_SENSE) < CAN_THRES) {
+        score();
+    }        
+
 
 }
 
@@ -140,6 +137,7 @@ void entertainment() {
 * Important motions
 *
 */
+//Time is the duration to run motors at
 void engageBox(int time) {
     double start_time = getCurrentMillis();
     while (getCurrentMillis() - start_time < time) {
@@ -149,6 +147,7 @@ void engageBox(int time) {
     }
 }
 
+//The modifier is for when the robot slows down by a factor (eg, when picking up a can)
 void lineFollow(float mod){
     // Tape following
     onTapeL = analogRead(TAPE_L) > THRES_L;
@@ -182,19 +181,14 @@ void lineFollow(float mod){
             drive(SLOW * mod, SLOW * mod);
         }  
     }
-
-    // print stuff, only on debug 
-    if (DEBUG) {
-        displayLineSensors();
-    }
 }
 
-// Functions like 3, but runs line following in the background
+// Functions like delay, but runs line following in the background
 void delayLineFollow(int duration) {
     double startTime = getCurrentMillis();
 
     while (getCurrentMillis() - startTime < duration) {
-        lineFollow(0.75);
+        lineFollow(CAN_SPEED_REDUCTION);
     }
 }
 
@@ -220,6 +214,7 @@ void score() {
 /*
 *
 * Lowest level, send signal to motors
+* Also debug functions
 *
 */
 
@@ -246,47 +241,37 @@ void drive(int speedL, int speedR) {
     }
 }
 
-void displayLineSensors() {
-    display.clearDisplay();
-    display.setCursor(0,0);
-    if (MODE_SWITCH) {
-        display.println("GAME MODE");
-    } else {
-        display.println("ENTERTAINMENT");
-    }
-    if (analogRead(TAPE_L) > THRES_L) {
-        display.println("LEFT ON");
-    } else {
-        display.println("LEFT OFF");
-    }
-    if (analogRead(TAPE_R) > THRES_R) {
-        display.println("RIGHT ON");
-    } else {
-        display.println("RIGHT OFF");
-    }
-    if (analogRead(CAN_SENSE) < CAN_THRES) {
-        display.println("CAN ");
+void displayLineSensors(int time) {
+    double start_time = getCurrentMillis();
+    while (getCurrentMillis() - start_time < time) {
+        display.clearDisplay();
+        display.setCursor(0,0);
         
-    } else {
-        display.println("NO CAN");
+        if (MODE_SWITCH) {
+            display.println("GAME MODE");
+        } else {
+            display.println("ENTERTAINMENT");
+        }
+        if (analogRead(TAPE_L) > THRES_L) {
+            display.println("LEFT ON");
+        } else {
+            display.println("LEFT OFF");
+        }
+        if (analogRead(TAPE_R) > THRES_R) {
+            display.println("RIGHT ON");
+        } else {
+            display.println("RIGHT OFF");
+        }
+        //display.println(analogRead(CAN_SENSE));
+        if (analogRead(CAN_SENSE) < CAN_THRES) {
+            display.println("CAN ");
+            
+        } else {
+            display.println("NO CAN");
+        }
+        display.display();
+        delay(100);
     }
-    display.display();
-
-    delay(200);
 }
 
-
-void displayCAN(){
-    display.clearDisplay();
-    display.setCursor(0,0);
-    display.println(analogRead(CAN_SENSE));
-
-    if (analogRead(CAN_SENSE) < CAN_THRES) {
-        display.println("CAN ");
-        
-    } else {
-        display.println("NO CAN");
-    }
-    display.display();
-}
 
