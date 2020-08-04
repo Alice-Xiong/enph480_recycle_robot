@@ -8,13 +8,13 @@
 #define GRAB_L PB_9
 #define GRAB_R PB_8
 #define ARM PB_6
-#define CAN_SENSE PA_1
+#define CAN_SENSE PA_0
 
 // Arm and servos values
 #define ARM_PWM_FREQ 50
 #define CAN_THRES 100
-#define CLOSE_L 2700
-#define CLOSE_R 300
+#define CLOSE_L 2800
+#define CLOSE_R 200
 #define OPEN_L 2100
 #define OPEN_R 900
 #define ARM_UP 2600
@@ -34,10 +34,10 @@
 #define DRIVE_PWM_FREQ 2000
 
 //Tape following
-#define FAST 900
-#define REG 850
+#define FAST 875
 #define SLOW 750
-#define CAN_SPEED_REDUCTION 0.75
+#define STOP 0
+#define CAN_SPEED_REDUCTION 0.80
 
 // OLED definitions
 #define SCREEN_WIDTH 128 // OLED display width, in pixels
@@ -172,13 +172,13 @@ void lineFollow(float mod){
         // Not updating last values until one sensor is on tape again
         // lastL is last time left sensor was on tape..
         if (lastL) {
-            drive(-REG * mod, FAST * mod);
+            drive(STOP * mod, FAST * mod);
         } else if (lastR)
         {
-            drive(FAST * mod, -REG * mod);
+            drive(FAST * mod, STOP * mod);
         } else
         {
-            drive(SLOW * mod, SLOW * mod);
+            drive(SLOW * mod, FAST * mod);
         }  
     }
 }
