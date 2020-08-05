@@ -2,7 +2,8 @@
 #include <Adafruit_SSD1306.h>
 
 #define DEBUG 0
-#define MODE_SWITCH 1
+#define MODE_SWITCH PA_4
+#define MODE_THRES 500
 
 // Arm and servos pins
 #define GRAB_L PB_9
@@ -13,10 +14,10 @@
 // Arm and servos values
 #define ARM_PWM_FREQ 50
 #define CAN_THRES 100
-#define CLOSE_L 2800
-#define CLOSE_R 200
-#define OPEN_L 2100
-#define OPEN_R 900
+#define CLOSE_L 2801
+#define CLOSE_R 201
+#define OPEN_L 2009
+#define OPEN_R 899
 #define ARM_UP 2600
 #define ARM_DOWN 1300
 
@@ -34,10 +35,11 @@
 #define DRIVE_PWM_FREQ 2000
 
 //Tape following
-#define FAST 875
-#define SLOW 750
-#define STOP 0
+#define FAST 950
+#define SLOW 840
+#define STOP -800
 #define CAN_SPEED_REDUCTION 0.80
+#define RIGHT_CORRECTION 1.06
 
 // OLED definitions
 #define SCREEN_WIDTH 128 // OLED display width, in pixels
@@ -100,36 +102,40 @@ void setup() {
 
     commandGrabber(OPEN_L, OPEN_R);
     delay(200);
-    engageBox(ENGAGE_BOX_TIME);
+    if (analogRead(MODE_SWITCH) < MODE_THRES) {
+        entertainment();
+    }
 }
 
 
 void loop() {
-
-    lineFollow();
-    if (analogRead(CAN_SENSE) < CAN_THRES) {
-        score();
-    }        
-
+    
+    engageBox(ENGAGE_BOX_TIME);
+    commandGrabber(OPEN_L, OPEN_R);
+    delay(200);
+    while (true) {
+        lineFollow();
+        if (analogRead(CAN_SENSE) < CAN_THRES) {
+            score();
+        }    
+    }
 
 }
 
 void entertainment() {
-    // Close grabber
-    commandGrabber(CLOSE_L, CLOSE_R);
-    delay(300);  
-    
-    // Raise arm
-    pwm_start(ARM, ARM_PWM_FREQ, ARM_UP, MICROSEC_COMPARE_FORMAT);
-    delay(650);
-    
-    // Open grabber
-    commandGrabber(OPEN_L, OPEN_R);
-    delay(200);
 
-    // Lower arm
-    pwm_start(ARM, ARM_PWM_FREQ, ARM_DOWN, MICROSEC_COMPARE_FORMAT);
-    delay(300);
+    while (true) {
+        drive(0,0);
+        if (analogRead(CAN_SENSE) < CAN_THRES) {
+            // Drive back
+            drive(STOP, STOP);
+            delay(400);
+
+            drive(0,0);
+            delay(800);
+            
+        }
+    }
 }
 
 /*
@@ -141,7 +147,7 @@ void entertainment() {
 void engageBox(int time) {
     double start_time = getCurrentMillis();
     while (getCurrentMillis() - start_time < time) {
-        drive(-FAST, -FAST);
+        drive(STOP, STOP);
         lastL = analogRead(TAPE_L) > THRES_L;
         lastR = analogRead(TAPE_R) > THRES_R;
     }
@@ -172,13 +178,13 @@ void lineFollow(float mod){
         // Not updating last values until one sensor is on tape again
         // lastL is last time left sensor was on tape..
         if (lastL) {
-            drive(STOP * mod, FAST * mod);
+            drive(STOP * mod, FAST * RIGHT_CORRECTION * mod);
         } else if (lastR)
         {
             drive(FAST * mod, STOP * mod);
         } else
         {
-            drive(SLOW * mod, FAST * mod);
+            drive(SLOW * mod, FAST * RIGHT_CORRECTION * mod);
         }  
     }
 }
@@ -247,10 +253,10 @@ void displayLineSensors(int time) {
         display.clearDisplay();
         display.setCursor(0,0);
         
-        if (MODE_SWITCH) {
+        if (analogRead(MODE_SWITCH) > MODE_THRES) {
             display.println("GAME MODE");
         } else {
-            display.println("ENTERTAINMENT");
+            display.println("ENTERTAIN");
         }
         if (analogRead(TAPE_L) > THRES_L) {
             display.println("LEFT ON");
